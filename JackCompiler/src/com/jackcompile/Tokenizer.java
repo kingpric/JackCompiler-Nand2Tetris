@@ -40,7 +40,7 @@ public class Tokenizer {
 
 			if (preCharset == -1)
 				return "";
-
+			xmlBuilder = new StringBuilder();
 			xmlBuilder.append("<tokens>");
 			bufRead.reset();
 
@@ -56,8 +56,8 @@ public class Tokenizer {
 				if (charset == -1)
 					break;
 
-				// char ch = (char) charset;
-				// System.out.println(charset + ":" + ch);
+//				char ch = (char) charset;
+//				System.out.println(charset + ":" + ch);
 
 				// Checking for string literals
 				if (charset == 34) {
@@ -78,7 +78,7 @@ public class Tokenizer {
 
 						// End of string liternal
 						else if (advCharset == 34) {
-							xmlBuilder.append(Utility.CreateXMLTag(LexicalElements.StringConstant, token));
+							xmlBuilder.append(Utility.CreateXMLTag(LexicalElements.stringConstant, token));
 							token = "";
 							charset = advCharset;
 							break;
@@ -104,15 +104,17 @@ public class Tokenizer {
 
 					// checking and discarding for comments (/** */)
 					else if (advCharset == 42 && bufRead.read() == 42) {
-						while (charset != 42 && (advCharset = bufRead.read()) != 47) {
+						while (!((advCharset = bufRead.read()) == 47 && charset == 42)) {
 							// discarding all intermediate charset '*/'
 							charset = advCharset;
 						}
+
 						continue;
 
 					} else {
 						bufRead.reset();
-						charset = bufRead.read();
+						// charset = bufRead.read();
+						xmlBuilder.append(Utility.CreateXMLTag(LexicalElements.symbol, String.valueOf((char) charset)));
 
 					}
 
@@ -137,7 +139,7 @@ public class Tokenizer {
 
 				// checking symbol
 				else if ((charset >= 33 && charset <= 47) || (charset >= 58 && charset <= 64)
-						|| (charset >= 123 && charset <= 126)) {
+						|| (charset >= 123 && charset <= 126) || (charset >= 91 && charset <= 96)) {
 					xmlBuilder.append(Utility.CreateXMLTag(LexicalElements.symbol, String.valueOf(((char) charset))));
 				}
 
@@ -163,7 +165,7 @@ public class Tokenizer {
 			bufRead.close();
 		}
 		xmlBuilder.append("</tokens>");
-
+		//System.out.println(xmlBuilder.toString());
 		ByteArrayInputStream input = new ByteArrayInputStream(xmlBuilder.toString().getBytes("UTF-8"));
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -175,28 +177,42 @@ public class Tokenizer {
 		return xmlBuilder.toString();
 	}
 
-	public String advance() {
+	public void advance() {
 
 		nodeName = ndList.item(docIndex).getNodeName();
 		nodeText = ndList.item(docIndex).getTextContent();
-		
+
 		docIndex++;
-		return nodeName;
+		// return nodeName;
 
 	}
 
-	public String getNodeName() {
-		return nodeName;
+	public void stepBack() {
+		docIndex -= 2;
+		nodeName = ndList.item(docIndex).getNodeName();
+		nodeText = ndList.item(docIndex).getTextContent();
+		docIndex++;
+	}
+
+	public void stepBack(int i) {
+		docIndex -= (i + 1);
+		nodeName = ndList.item(docIndex).getNodeName();
+		nodeText = ndList.item(docIndex).getTextContent();
+		docIndex++;
+	}
+
+	public LexicalElements getNodeName() {
+		return LexicalElements.valueOf(nodeName);
 	}
 
 	public String getNodeText() {
-		return nodeText;
+		return nodeText.trim();
 	}
 
 	public boolean hasMoreToken() {
 		if (ndList.getLength() == docIndex)
 			return false;
-		
+
 		advance();
 		return true;
 	}
